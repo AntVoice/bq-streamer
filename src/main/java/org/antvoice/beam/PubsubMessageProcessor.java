@@ -42,7 +42,6 @@ public class PubsubMessageProcessor extends PTransform<PCollection<PubsubMessage
                 return;
             }
 
-            LOG.info("Received a row for " + dataset + "." + table);
             AbstractMap.SimpleImmutableEntry row = new AbstractMap.SimpleImmutableEntry<>(_project + ":" + dataset + "." + table, ByteString.copyFrom(c.element().getPayload()));
             c.output(row);
         }
