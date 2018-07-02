@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * A process to read incoming data from pubsub and write them in
- * specified bigqueyr tables.
+ * specified bigquery tables.
  *
  * <p>To run this process using managed resource in Google Cloud
  * Platform, you should specify the following command-line options:
@@ -48,7 +48,7 @@ public class StreamerRunner {
 
     p.apply("ReadLines", new PubsubReader(options.getTopic(), options.getSubscription()))
         .apply("ExtractMessages", new PubsubMessageProcessor(options.getProject()))
-        .apply(Window.into(FixedWindows.of(Duration.standardSeconds(10))))
+        .apply(Window.into(FixedWindows.of(Duration.standardSeconds(options.getWindowDuration()))))
         .apply("WriteBq", new BigQueryWriter(new FormatterFactory(options.getFormat()).getFormatter()));
 
     p.run().waitUntilFinish();
