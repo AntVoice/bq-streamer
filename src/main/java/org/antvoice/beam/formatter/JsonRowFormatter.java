@@ -1,5 +1,7 @@
 package org.antvoice.beam.formatter;
 
+import com.google.api.client.json.GenericJson;
+import com.google.api.services.bigquery.model.TableCell;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.protobuf.ByteString;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -20,18 +22,35 @@ public class JsonRowFormatter implements SerializableFunction<AbstractMap.Simple
     private TableRow convertRow(JSONObject object) {
         TableRow row = new TableRow();
         for(String key : object.keySet()) {
-            if(!object.isNull(key)){
-                Object value = object.get(key);
-                if(value instanceof JSONArray) {
-                    List<TableRow> subRow = new ArrayList<>();
-                    JSONArray arr = (JSONArray)value;
-                    for(Object elem : arr) {
-                        subRow.add(convertRow((JSONObject)elem));
+            if(object.isNull(key)) {
+                continue;
+            }
+
+            Object value = object.get(key);
+            if(!(value instanceof JSONArray)) {
+                row.set(key, value);
+                continue;
+            }
+
+            try {
+                JSONArray arr = (JSONArray) value;
+                List<TableRow> subRow = new ArrayList<>();
+                if(arr.length() > 0 && arr.get(0) instanceof JSONObject) {
+                    for (Object elem : arr) {
+                        subRow.add(convertRow((JSONObject) elem));
                     }
+
                     row.set(key, subRow);
                 } else {
-                    row.set(key, value);
+                    List<Object> arrayContent = new ArrayList<>();
+                    for (Object elem : arr) {
+                        arrayContent.add(elem);
+                    }
+
+                    row.set(key, arrayContent);
                 }
+            } catch (Exception e) {
+                LOG.error("Cannot parse nested data");
             }
         }
 
