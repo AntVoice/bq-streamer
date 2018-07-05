@@ -2,6 +2,7 @@ package org.antvoice.beam;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
+import org.antvoice.beam.metrics.CounterProvider;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -24,6 +25,7 @@ public class PubsubMessageProcessor extends PTransform<PCollection<PubsubMessage
     public static class ExtractMessagesFn extends DoFn<PubsubMessage, AbstractMap.SimpleImmutableEntry<String, ByteString>> {
         private String _project;
 
+        private final CounterProvider _counterProvider = new CounterProvider();
         public ExtractMessagesFn(String project) {
             _project = project;
         }
@@ -41,6 +43,8 @@ public class PubsubMessageProcessor extends PTransform<PCollection<PubsubMessage
                 LOG.error("Dataset and table must be set in metadata");
                 return;
             }
+
+            _counterProvider.getCounter("PubsubMessageProcessor", dataset + "." + table).inc();
 
             AbstractMap.SimpleImmutableEntry row = new AbstractMap.SimpleImmutableEntry<>(_project + ":" + dataset + "." + table, ByteString.copyFrom(c.element().getPayload()));
             c.output(row);
