@@ -54,6 +54,7 @@ public class JsonRowFormatter implements SerializableFunction<AbstractMap.Simple
             }
         }
 
+
         return row;
     }
 
@@ -64,6 +65,7 @@ public class JsonRowFormatter implements SerializableFunction<AbstractMap.Simple
             JSONObject obj = new JSONObject(message);
 
             TableRow row = convertRow(obj);
+            row.set("insertId", message.hashCode());
 
             return row;
         } catch (UnsupportedEncodingException e) {
