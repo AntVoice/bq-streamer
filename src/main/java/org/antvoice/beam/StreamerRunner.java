@@ -51,6 +51,6 @@ public class StreamerRunner {
         .apply(Window.into(FixedWindows.of(Duration.standardSeconds(options.getWindowDuration()))))
         .apply("WriteBq", new BigQueryWriter(new FormatterFactory(options.getFormat()).getFormatter()));
 
-    p.run().waitUntilFinish();
+    p.run();
   }
 }
