@@ -14,7 +14,7 @@ public class FormatterFactory {
         _format = format;
     }
 
-    public SerializableFunction<AbstractMap.SimpleImmutableEntry<String, ByteString>, TableRow> getFormatter() {
+    public SerializableFunction<AbstractMap.SimpleImmutableEntry<String, String>, TableRow> getFormatter() {
         // Only known format at the moment
         return new JsonRowFormatter();
     }

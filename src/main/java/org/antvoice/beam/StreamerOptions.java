@@ -23,4 +23,8 @@ public interface StreamerOptions extends GcpOptions {
     @Default.Integer(10)
     Integer getWindowDuration();
     void setWindowDuration(Integer durationSeconds);
+
+    @Description("Should the deployment hang until finished")
+    Boolean getAttached();
+    void setAttached(Boolean value);
 }
