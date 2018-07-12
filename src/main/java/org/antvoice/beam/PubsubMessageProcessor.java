@@ -53,7 +53,6 @@ public class PubsubMessageProcessor extends PTransform<PCollection<PubsubMessage
             _counterProvider.getCounter("PubsubMessageProcessor", dataset + "." + table).inc();
 
             String message;
-            ByteString bytes = ByteString.copyFrom(c.element().getPayload());
             if(metadata.containsKey("compression")){
                 String compression = metadata.get("compression");
                 if(!compression.equals("gzip")){
