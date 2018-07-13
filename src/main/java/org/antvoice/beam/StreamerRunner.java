@@ -37,20 +37,24 @@ import org.slf4j.LoggerFactory;
  *   --runner=DataflowRunner
  */
 public class StreamerRunner {
-  private static final Logger LOG = LoggerFactory.getLogger(StreamerRunner.class);
+    private static final Logger LOG = LoggerFactory.getLogger(StreamerRunner.class);
 
-  public static void main(String[] args) {
-    StreamerOptions options = PipelineOptionsFactory
-        .fromArgs(args)
-        .withValidation()
-        .as(StreamerOptions.class);
-    Pipeline p = Pipeline.create(options);
+    public static void main(String[] args) {
+        StreamerOptions options = PipelineOptionsFactory
+                .fromArgs(args)
+                .withValidation()
+                .as(StreamerOptions.class);
+        Pipeline p = Pipeline.create(options);
 
-    p.apply("ReadLines", new PubsubReader(options.getTopic(), options.getSubscription()))
-        .apply("ExtractMessages", new PubsubMessageProcessor(options.getProject()))
-        .apply(Window.into(FixedWindows.of(Duration.standardSeconds(options.getWindowDuration()))))
-        .apply("WriteBq", new BigQueryWriter(new FormatterFactory(options.getFormat()).getFormatter()));
+        p.apply("ReadLines", new PubsubReader(options.getTopic(), options.getSubscription()))
+                .apply("ExtractMessages", new PubsubMessageProcessor(options.getProject()))
+                .apply(Window.into(FixedWindows.of(Duration.standardSeconds(options.getWindowDuration()))))
+                .apply("WriteBq", new BigQueryWriter(new FormatterFactory(options.getFormat()).getFormatter()));
 
-    p.run();
-  }
+        if(options.getAttached()){
+            p.run().waitUntilFinish();
+        }else {
+            p.run();
+        }
+    }
 }

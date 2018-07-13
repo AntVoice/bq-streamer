@@ -18,18 +18,18 @@ import org.slf4j.LoggerFactory;
 
 import java.util.AbstractMap;
 
-public class BigQueryWriter extends PTransform<PCollection<AbstractMap.SimpleImmutableEntry<String, ByteString>>, PDone> {
+public class BigQueryWriter extends PTransform<PCollection<AbstractMap.SimpleImmutableEntry<String, String>>, PDone> {
 
-    private SerializableFunction<AbstractMap.SimpleImmutableEntry<String, ByteString>, TableRow> _formatter;
+    private SerializableFunction<AbstractMap.SimpleImmutableEntry<String, String>, TableRow> _formatter;
 
-    public BigQueryWriter(SerializableFunction<AbstractMap.SimpleImmutableEntry<String, ByteString>, TableRow> formatter) {
+    public BigQueryWriter(SerializableFunction<AbstractMap.SimpleImmutableEntry<String, String>, TableRow> formatter) {
         _formatter = formatter;
     }
 
-    private static class DestinationComputer extends DynamicDestinations<AbstractMap.SimpleImmutableEntry<String, ByteString>, String>{
+    private static class DestinationComputer extends DynamicDestinations<AbstractMap.SimpleImmutableEntry<String, String>, String>{
 
         @Override
-        public String getDestination(ValueInSingleWindow<AbstractMap.SimpleImmutableEntry<String, ByteString>> element) {
+        public String getDestination(ValueInSingleWindow<AbstractMap.SimpleImmutableEntry<String, String>> element) {
             return element.getValue().getKey();
         }
 
@@ -45,8 +45,8 @@ public class BigQueryWriter extends PTransform<PCollection<AbstractMap.SimpleImm
     }
 
     @Override
-    public PDone expand(PCollection<AbstractMap.SimpleImmutableEntry<String, ByteString>> input) {
-        input.apply(BigQueryIO.<AbstractMap.SimpleImmutableEntry<String, ByteString>>write()
+    public PDone expand(PCollection<AbstractMap.SimpleImmutableEntry<String, String>> input) {
+        input.apply(BigQueryIO.<AbstractMap.SimpleImmutableEntry<String, String>>write()
                 .to(new DestinationComputer())
                 .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
                 .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
