@@ -50,7 +50,7 @@ public class PubsubMessageProcessor extends PTransform<PCollection<PubsubMessage
 
             String dataset = metadata.get("dataset");
             String table = metadata.get("table");
-            _counterProvider.getCounter("PubsubMessageProcessor", dataset + "." + table).inc();
+            _counterProvider.getCounter("PubsubMessageProcessor", dataset + "." + table).inc(c.element().getPayload().length);
 
             String message;
             if(metadata.containsKey("compression")){
@@ -61,22 +61,7 @@ public class PubsubMessageProcessor extends PTransform<PCollection<PubsubMessage
                 }
 
                 try {
-                    ByteArrayInputStream bytein = new ByteArrayInputStream(c.element().getPayload());
-                    GZIPInputStream gzip = new GZIPInputStream(bytein);
-                    ByteArrayOutputStream byteout = new ByteArrayOutputStream();
-
-                    int res = 0;
-                    byte buf[] = new byte[1024];
-                    while (res >= 0) {
-                        res = gzip.read(buf, 0, buf.length);
-                        if (res > 0) {
-                            byteout.write(buf, 0, res);
-
-                        }
-                    }
-
-                    byte uncompressed[] = byteout.toByteArray();
-                    message = new String(uncompressed, "UTF-8");
+                    message = UnzipMessage(c);
                 } catch (IOException e) {
                     LOG.error("Cannot uncompress gzip message", e);
                     return;
@@ -92,6 +77,25 @@ public class PubsubMessageProcessor extends PTransform<PCollection<PubsubMessage
 
             AbstractMap.SimpleImmutableEntry row = new AbstractMap.SimpleImmutableEntry<>(_project + ":" + dataset + "." + table, message);
             c.output(row);
+        }
+
+        private String UnzipMessage(ProcessContext c) throws IOException {
+            String message;ByteArrayInputStream bytein = new ByteArrayInputStream(c.element().getPayload());
+            GZIPInputStream gzip = new GZIPInputStream(bytein);
+            ByteArrayOutputStream byteout = new ByteArrayOutputStream();
+
+            int res = 0;
+            byte buf[] = new byte[1024];
+            while (res >= 0) {
+                res = gzip.read(buf, 0, buf.length);
+                if (res > 0) {
+                    byteout.write(buf, 0, res);
+                }
+            }
+
+            byte uncompressed[] = byteout.toByteArray();
+            message = new String(uncompressed, "UTF-8");
+            return message;
         }
     }
 
