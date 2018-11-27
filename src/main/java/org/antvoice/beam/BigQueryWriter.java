@@ -2,35 +2,38 @@ package org.antvoice.beam;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
-import com.google.protobuf.ByteString;
+import org.antvoice.beam.entities.BigQueryRow;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.DynamicDestinations;
 import org.apache.beam.sdk.io.gcp.bigquery.TableDestination;
-import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.ValueInSingleWindow;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.AbstractMap;
+public class BigQueryWriter extends PTransform<PCollection<BigQueryRow>, PDone> {
 
-public class BigQueryWriter extends PTransform<PCollection<AbstractMap.SimpleImmutableEntry<String, String>>, PDone> {
+    private String _project;
+    private SerializableFunction<String, TableRow> _formatter;
 
-    private SerializableFunction<AbstractMap.SimpleImmutableEntry<String, String>, TableRow> _formatter;
-
-    public BigQueryWriter(SerializableFunction<AbstractMap.SimpleImmutableEntry<String, String>, TableRow> formatter) {
+    public BigQueryWriter(String project, SerializableFunction<String, TableRow> formatter) {
+        _project = project;
         _formatter = formatter;
     }
 
-    private static class DestinationComputer extends DynamicDestinations<AbstractMap.SimpleImmutableEntry<String, String>, String>{
+    private static class DestinationComputer
+            extends DynamicDestinations<BigQueryRow, String>{
+
+        private String _project;
+
+        public DestinationComputer(String project) {
+            _project = project;
+        }
 
         @Override
-        public String getDestination(ValueInSingleWindow<AbstractMap.SimpleImmutableEntry<String, String>> element) {
-            return element.getValue().getKey();
+        public String getDestination(ValueInSingleWindow<BigQueryRow> element) {
+            return _project + ":" + element.getValue().getDataset() + "." + element.getValue().getTable() ;
         }
 
         @Override
@@ -45,12 +48,12 @@ public class BigQueryWriter extends PTransform<PCollection<AbstractMap.SimpleImm
     }
 
     @Override
-    public PDone expand(PCollection<AbstractMap.SimpleImmutableEntry<String, String>> input) {
-        input.apply(BigQueryIO.<AbstractMap.SimpleImmutableEntry<String, String>>write()
-                .to(new DestinationComputer())
+    public PDone expand(PCollection<BigQueryRow> input) {
+        input.apply(BigQueryIO.<BigQueryRow>write()
+                .to(new DestinationComputer(_project))
                 .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
                 .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
-                .withFormatFunction(_formatter));
+                .withFormatFunction(row -> _formatter.apply(row.getRow())));
 
         return PDone.in(input.getPipeline());
     }

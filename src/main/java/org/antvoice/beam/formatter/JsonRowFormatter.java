@@ -1,6 +1,7 @@
 package org.antvoice.beam.formatter;
 
 import com.google.api.services.bigquery.model.TableRow;
+import org.antvoice.beam.entities.BigQueryRow;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -13,7 +14,7 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;
 
-public class JsonRowFormatter implements SerializableFunction<AbstractMap.SimpleImmutableEntry<String, String>, TableRow> {
+public class JsonRowFormatter implements SerializableFunction<String, TableRow> {
 
     private static final Logger LOG = LoggerFactory.getLogger(JsonRowFormatter.class);
 
@@ -56,9 +57,9 @@ public class JsonRowFormatter implements SerializableFunction<AbstractMap.Simple
     }
 
     @Override
-    public TableRow apply(AbstractMap.SimpleImmutableEntry<String, String> input) {
+    public TableRow apply(String input) {
         try {
-            JSONObject obj = new JSONObject(input.getValue());
+            JSONObject obj = new JSONObject(input);
 
             TableRow row = convertRow(obj);
 
