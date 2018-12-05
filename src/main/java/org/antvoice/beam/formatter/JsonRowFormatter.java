@@ -1,5 +1,6 @@
 package org.antvoice.beam.formatter;
 
+import com.google.api.services.bigquery.model.TableCell;
 import com.google.api.services.bigquery.model.TableRow;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.json.JSONArray;
@@ -25,8 +26,13 @@ public class JsonRowFormatter implements SerializableFunction<AbstractMap.Simple
             }
 
             Object value = object.get(key);
-            if(!(value instanceof JSONArray)) {
+            if(!(value instanceof JSONArray)
+                && !(value instanceof JSONObject)) {
                 row.set(key, value);
+                continue;
+            } else if(value instanceof JSONObject) {
+                TableRow subRow = convertRow((JSONObject) value);
+                row.set(key, subRow);
                 continue;
             }
 
