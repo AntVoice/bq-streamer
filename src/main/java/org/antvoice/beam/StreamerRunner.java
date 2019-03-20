@@ -17,11 +17,13 @@
  */
 package org.antvoice.beam;
 
+import org.antvoice.beam.entities.BigQueryRow;
 import org.antvoice.beam.formatter.FormatterFactory;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
+import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,19 +39,28 @@ import org.slf4j.LoggerFactory;
  *   --runner=DataflowRunner
  */
 public class StreamerRunner {
-    private static final Logger LOG = LoggerFactory.getLogger(StreamerRunner.class);
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         StreamerOptions options = PipelineOptionsFactory
                 .fromArgs(args)
                 .withValidation()
                 .as(StreamerOptions.class);
         Pipeline p = Pipeline.create(options);
+        long currentTimeMillis = System.currentTimeMillis();
 
-        p.apply("ReadLines", new PubsubReader(options.getTopic(), options.getSubscription()))
-                .apply("ExtractMessages", new PubsubMessageProcessor(options.getProject()))
-                .apply(Window.into(FixedWindows.of(Duration.standardSeconds(options.getWindowDuration()))))
-                .apply("WriteBq", new BigQueryWriter(new FormatterFactory(options.getFormat()).getFormatter()));
+        PCollection<BigQueryRow> rows = p.apply("ReadLines", new PubsubReader(options.getTopic(), options.getSubscription()))
+                .apply("ExtractMessages", new PubsubMessageProcessor())
+                .apply(Window.into(FixedWindows.of(Duration.standardSeconds(options.getWindowDuration()))));
+
+        if(options.getDumpGoogleStorage()) {
+            if(options.getDumpLocation().isEmpty() || !options.getDumpLocation().startsWith("gs://")){
+                throw new Exception("Invalid dumpLocation parameter. Must be a valid Google Storage URI.");
+            }
+            rows.apply("WriteGS", new GoogleStorageWriter(options.getDumpLocation(), currentTimeMillis));
+        }else {
+            rows.apply("WriteBq", new BigQueryWriter(options.getProject(),
+                    new FormatterFactory(options.getFormat()).getFormatter()));
+        }
 
         if(options.getAttached()){
             p.run().waitUntilFinish();
@@ -58,3 +69,4 @@ public class StreamerRunner {
         }
     }
 }
+

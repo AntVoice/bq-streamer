@@ -1,6 +1,7 @@
 package org.antvoice.beam;
 
-import com.google.protobuf.ByteString;
+import org.antvoice.beam.entities.BigQueryRow;
+import org.antvoice.beam.helper.Zip;
 import org.antvoice.beam.metrics.CounterProvider;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -10,29 +11,22 @@ import org.apache.beam.sdk.values.PCollection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.util.AbstractMap;
 import java.util.Map;
-import java.util.zip.GZIPInputStream;
 
-public class PubsubMessageProcessor extends PTransform<PCollection<PubsubMessage>, PCollection<AbstractMap.SimpleImmutableEntry<String, String>>> {
+public class PubsubMessageProcessor
+        extends PTransform<PCollection<PubsubMessage>, PCollection<BigQueryRow>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(PubsubMessageProcessor.class);
-    private String _project;
 
-    public PubsubMessageProcessor(String project) {
-        _project = project;
+    public PubsubMessageProcessor() {
     }
 
-    public static class ExtractMessagesFn extends DoFn<PubsubMessage, AbstractMap.SimpleImmutableEntry<String, String>> {
-        private String _project;
+    public static class ExtractMessagesFn extends DoFn<PubsubMessage, BigQueryRow> {
 
         private final CounterProvider _counterProvider = new CounterProvider();
-        public ExtractMessagesFn(String project) {
-            _project = project;
+        public ExtractMessagesFn() {
         }
 
         @ProcessElement
@@ -50,7 +44,8 @@ public class PubsubMessageProcessor extends PTransform<PCollection<PubsubMessage
 
             String dataset = metadata.get("dataset");
             String table = metadata.get("table");
-            _counterProvider.getCounter("PubsubMessageProcessor", dataset + "." + table).inc(c.element().getPayload().length);
+            _counterProvider.getCounter("PubsubMessageProcessor", dataset + "." + table)
+                    .inc(c.element().getPayload().length);
 
             String message;
             if(metadata.containsKey("compression")){
@@ -61,7 +56,7 @@ public class PubsubMessageProcessor extends PTransform<PCollection<PubsubMessage
                 }
 
                 try {
-                    message = UnzipMessage(c);
+                    message = Zip.Unzip(c.element().getPayload());
                 } catch (IOException e) {
                     LOG.error("Cannot uncompress gzip message", e);
                     return;
@@ -75,33 +70,13 @@ public class PubsubMessageProcessor extends PTransform<PCollection<PubsubMessage
                 }
             }
 
-            AbstractMap.SimpleImmutableEntry row = new AbstractMap.SimpleImmutableEntry<>(_project + ":" + dataset + "." + table, message);
-            c.output(row);
-        }
-
-        private String UnzipMessage(ProcessContext c) throws IOException {
-            String message;ByteArrayInputStream bytein = new ByteArrayInputStream(c.element().getPayload());
-            GZIPInputStream gzip = new GZIPInputStream(bytein);
-            ByteArrayOutputStream byteout = new ByteArrayOutputStream();
-
-            int res = 0;
-            byte buf[] = new byte[1024];
-            while (res >= 0) {
-                res = gzip.read(buf, 0, buf.length);
-                if (res > 0) {
-                    byteout.write(buf, 0, res);
-                }
-            }
-
-            byte uncompressed[] = byteout.toByteArray();
-            message = new String(uncompressed, "UTF-8");
-            return message;
+            c.output(new BigQueryRow(dataset, table, message));
         }
     }
 
     @Override
-    public PCollection<AbstractMap.SimpleImmutableEntry<String, String>> expand(PCollection<PubsubMessage> input) {
-        return input.apply(ParDo.of(new ExtractMessagesFn(_project)));
+    public PCollection<BigQueryRow> expand(PCollection<PubsubMessage> input) {
+        return input.apply(ParDo.of(new ExtractMessagesFn()));
     }
 }
 

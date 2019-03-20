@@ -3,7 +3,6 @@ package org.antvoice.beam;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
 public interface StreamerOptions extends GcpOptions {
@@ -15,7 +14,7 @@ public interface StreamerOptions extends GcpOptions {
     String getSubscription();
     void setSubscription(String value);
 
-    @Description("Serializtion type. Uses uncompressed JSON as a default. No other value at the moment")
+    @Description("Serialization type. Uses uncompressed JSON as a default. No other value at the moment")
     String getFormat();
     void setFormat(String value);
 
@@ -28,4 +27,14 @@ public interface StreamerOptions extends GcpOptions {
     @Default.Boolean(false)
     Boolean getAttached();
     void setAttached(Boolean value);
+
+    @Description("Used to redirect the data to Google Storage instead of BigQuery")
+    @Default.Boolean(false)
+    Boolean getDumpGoogleStorage();
+    void setDumpGoogleStorage(Boolean isDumpGoogleStorage);
+
+    @Description("The GS directory where the data will be dumped (they will dump in gs://dumpLocation/dataset/table/*")
+    @Default.String("")
+    String getDumpLocation();
+    void setDumpLocation(String gsLocation);
 }
